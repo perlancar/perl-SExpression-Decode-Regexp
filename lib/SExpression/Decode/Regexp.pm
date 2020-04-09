@@ -114,15 +114,13 @@ our $FROM_SEXP = qr{
   |
       (?&CHAR_UNESCAPED)
   |
+      (?&ATOM)
+  |
       (?&STRING)
   |
-      (?&PAIR)
-  |
-      (?&LIST)
+      (?&LIST_OR_PAIR)
   |
       (?&VECTOR)
-  |
-      (?&ATOM)
   )
 )
 
@@ -232,29 +230,18 @@ our $FROM_SEXP = qr{
   )
 )
 
-(?<PAIR>
-  \(\s*
-  (?{ [$^R, []] })
-  (?&VALUE) # [[$^R, []], $val]
-  (?{ [$^R->[0][0], [$^R->[1]]] })
-  \s+ \. \s+
-  (?&VALUE)
-  (?{ push @{$^R->[0][1]}, $^R->[1]; $^R->[0] })
-  \s*
-  (?:
-      \)
-  |
-      (?:.|\z) (?{ _fail "Expected closing of pair" })
-  )
-)
-
-(?<LIST>
+(?<LIST_OR_PAIR>
   \(\s*
   (?{ [$^R, []] })
   (?:
       (?&VALUE) # [[$^R, []], $val]
       (?{ [$^R->[0][0], [$^R->[1]]] })
       (?:
+          (?:
+              \s+ \. \s+ (?&VALUE)
+              (?{ push @{$^R->[0][1]}, $^R->[1]; $^R->[0] })
+          )
+      |
           (?:
               \s+ (?&VALUE)
               (?{ push @{$^R->[0][1]}, $^R->[1]; $^R->[0] })
@@ -267,7 +254,7 @@ our $FROM_SEXP = qr{
   (?:
       \)
   |
-      (?:.|\z) (?{ _fail "Expected closing of list" })
+      (?:.|\z) (?{ _fail "Expected closing of list/pair" })
   )
 )
 
@@ -295,7 +282,7 @@ our $FROM_SEXP = qr{
 )
 
 (?<ATOM>
-  ([^\s\\()]+) # XXX not quite correct
+  ([^\[\]"\s\\()]+) # XXX not quite correct
   (?{ [$^R, $^N] })
 )
 
